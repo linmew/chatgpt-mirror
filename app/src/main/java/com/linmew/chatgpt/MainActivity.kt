@@ -1,26 +1,49 @@
 package com.linmew.chatgpt
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import com.linmew.chatgpt.ui.theme.ChatgptTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
+    private val requiredPermissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    private var uploadMessage: ValueCallback<Array<Uri>>? = null
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var chooseFileLauncher: ActivityResultLauncher<String>
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTheme(R.style.Theme_Chatgpt_Splash)
+
+        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            if (permissions.values.all { it }) {
+                // All permissions granted
+            } else {
+                Toast.makeText(this, "权限未授予", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        chooseFileLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uploadMessage?.onReceiveValue(uri?.let { arrayOf(it) } ?: arrayOf())
+            uploadMessage = null
+        }
 
         webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -38,23 +61,39 @@ class MainActivity : ComponentActivity() {
                 }
             }
             settings.javaScriptEnabled = true
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(webView: WebView, filePathCallback: ValueCallback<Array<Uri>>, fileChooserParams: FileChooserParams): Boolean {
+                    if (!allPermissionsGranted()) {
+                        requestPermissions()
+                        return false
+                    }
+                    uploadMessage = filePathCallback
+                    chooseFileLauncher.launch("*/*")
+                    return true
+                }
+            }
             loadUrl("https://chat.paimons.cn")
         }
-        // 创建一个 OnBackPressedCallback 对象
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (webView.canGoBack()) {
                     webView.goBack()
                 } else {
-                    // 当 WebView 无法回退时，禁用此回调，使事件可以向下分发
                     isEnabled = false
-                    // 触发系统的返回处理
                     onBackPressedDispatcher.onBackPressed()
                 }
             }
         }
 
         onBackPressedDispatcher.addCallback(this, callback)
+    }
+
+    private fun allPermissionsGranted() = requiredPermissions.all {
+        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPermissions() {
+        requestPermissionLauncher.launch(requiredPermissions)
     }
 }
 
