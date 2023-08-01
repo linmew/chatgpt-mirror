@@ -21,5 +21,5 @@
 
 #### 丨运行效果
 
-<table><tr><td><img src="C:\Users\13434\Desktop\qq_pic_merged_1690882419832.jpg" alt="首页" /></td><td><img src="C:\Users\13434\Desktop\qq_pic_merged_1690882430573.jpg" alt="页面" /></td></tr></table>
+<table><tr><td><img src="./renderings/index.jpg" alt="首页" /></td><td><img src="./renderings/page.jpg" alt="页面" /></td></tr></table>
 
