@@ -2,6 +2,8 @@ package com.linmew.chatgpt
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -22,7 +24,7 @@ import com.linmew.chatgpt.ui.theme.ChatgptTheme
 
 class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
-    private val requiredPermissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    private val requiredPermissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     private var uploadMessage: ValueCallback<Array<Uri>>? = null
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var chooseFileLauncher: ActivityResultLauncher<String>
@@ -72,6 +74,19 @@ class MainActivity : ComponentActivity() {
                     return true
                 }
             }
+            setDownloadListener { url, _, _, _, _ ->
+                if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                    // request permission
+                    requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
+                } else {
+                    // permission already granted
+                    val request = DownloadManager.Request(Uri.parse(url))
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                    manager.enqueue(request)
+                }
+            }
+
             loadUrl("https://chat.paimons.cn")
         }
         val callback = object : OnBackPressedCallback(true) {
@@ -95,6 +110,7 @@ class MainActivity : ComponentActivity() {
     private fun requestPermissions() {
         requestPermissionLauncher.launch(requiredPermissions)
     }
+
 }
 
 @Composable
